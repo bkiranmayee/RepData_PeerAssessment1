@@ -1,0 +1,99 @@
+Peer-assignment 1
+Kiranmayee Bakshy
+
+Tuesday, December 09, 2014
+
+Loading and preprocessing the data
+setwd("C:/Users/kiran/Documents/COURSES-JHU/Reproducible research")
+data=read.csv("activity.csv", header=TRUE, sep=",")
+#ignore the missing values
+complete.data<-complete.cases(data) 
+#subset the non-missing values
+complete.data<-subset(data,complete.cases(data)==TRUE) 
+#split data by date
+data.bydate<-split(complete.data,complete.data$date, drop=TRUE)
+#calculate the number of steps per day
+steps_per_day<-sapply(data.bydate, function(x) sum(x$steps))
+#plot histogram
+hist(steps_per_day, col="cyan")
+
+
+#calculate and report the mean and median
+mean(steps_per_day)
+## [1] 10766.19
+median(steps_per_day)
+## [1] 10765
+What is the average daily activity pattern?
+Time series plot: 5 min interval (x-axis) and average number of steps taken across all days (y-axis)
+MeanPerInterval <- tapply(complete.data$steps, complete.data$interval, mean)
+plot(MeanPerInterval, type = "l", main = ("Steps vs. Interval (daily average)"), ylab = "number of steps")
+
+
+# The interval with maximum number of steps
+seq(along = MeanPerInterval)[MeanPerInterval==max(MeanPerInterval)]
+## [1] 104
+Imputing missing values
+Total number of missing values in the dataset (number of rows with ‘NA’)
+sum(is.na(data$steps))
+## [1] 2304
+Fill all the missing values with mean of that 5-min interval
+# Get the steps mean per interval as a vector
+tmp_MeanPerInterval <- as.vector(MeanPerInterval)
+# Repeat it to be the same for each of the 61 days
+tmp_MeanPerInterval <- rep(tmp_MeanPerInterval, 61)
+# Set it one where there is no missin data
+tmp_MeanPerInterval[!is.na(data$steps)] = 1
+
+# Get the steps data as a vector
+tmp_dataTest <- as.vector(data$steps)
+# Set it to one where data is missing
+tmp_dataTest[is.na(tmp_dataTest)] = 1
+
+# create a copy of the data to be imputed
+data_NoMissing <- data
+data_NoMissing$steps <- tmp_MeanPerInterval * tmp_dataTest
+stepsTotalPerDay_NoMissing <- tapply(data_NoMissing$steps, data_NoMissing$date, 
+    sum)
+hist(stepsTotalPerDay_NoMissing, breaks = 6, main = "Frequency of number of steps per day", 
+    xlab = "steps_per_day", ylab = "Frequency", col = "blue")
+
+
+Mean total number of steps taken per day for the imputed dataset is:
+
+mean(stepsTotalPerDay_NoMissing)
+## [1] 10766.19
+Median total number of steps taken per day for the imputed dataset is:
+
+median(stepsTotalPerDay_NoMissing)
+## [1] 10766.19
+The mean of the new imputed dataset slightly differs from that of the original dataset whereas the median does not.
+Here, the mean exactly equals the median.
+From the histogram we can see that the the number of data in the middle of histogram has increased since number of new data with the mean has been added.
+Differences in activity patterns between weekdays and weekends?
+# Create a factor variable with two levels (weekday, weekend-day)
+tmpLT <- as.POSIXlt(data$date, format = "%Y-%m-%d")
+tmpWeekDays <- tmpLT$wday
+tmpWeekDays[tmpWeekDays == 0] = 0
+tmpWeekDays[tmpWeekDays == 6] = 0
+tmpWeekDays[tmpWeekDays != 0] = 1
+tmpWeekDaysFactor <- factor(tmpWeekDays, levels = c(0, 1))
+# Add the factor variable to the data
+data$WD <- tmpWeekDaysFactor
+# Calculate the mean
+stepsMeanPerWeekday <- tapply(data$steps, list(data$interval, data$WD), mean, 
+    na.rm = T)
+
+par(mfrow = c(2, 1))
+# Display the 2 plots
+with(data, {
+    par(mai = c(0, 1, 1, 0))
+    plot(stepsMeanPerWeekday[, 1], type = "l", main = ("Steps vs. Interval"), 
+        xaxt = "n", ylab = "Weekends")
+    title = ("# of Steps v.s. Interval")
+    par(mai = c(1, 1, 0, 0))
+    plot(stepsMeanPerWeekday[, 2], type = "l", xlab = "Interval", ylab = "Weekdays")
+
+})
+
+
+Yes, there is clearly a difference in the activity pattern of weekdays and weekends.
